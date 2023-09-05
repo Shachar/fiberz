@@ -1,6 +1,8 @@
 .*.swp
 *~
 
+Makefile.in
+
 /aclocal.m4
 /autom4te.cache
 /compile
@@ -12,3 +14,5 @@
 /install-sh
 /ltmain.sh
 /missing
+
+/build*
