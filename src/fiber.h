@@ -6,6 +6,10 @@
 
 namespace Fiberz::Internal {
 
+class Fiber;
+
+extern "C" void main_trampoline(Fiber *_this);
+
 class Fiber {
 public:
     using Idx = Typed<"FiberIdx", FiberId::UnderlyingType, 0, std::ios::hex>;
@@ -26,8 +30,10 @@ public:
     Fiber(Fiber &&that) = default;
     Fiber &operator=(Fiber &&that) = default;
 
+    void switchTo(Fiber &next);
+
 private:
-    static void main_trampoline(Fiber *_this);
+    friend void main_trampoline(Fiber *fiber);
     void main();
 };
 

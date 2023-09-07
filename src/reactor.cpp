@@ -26,6 +26,11 @@ Reactor::Reactor(Params startup_params) :
         stack += page_size * (_startup_params.fiber_stack_guard_pages + _startup_params.fiber_stack_pages);
         _fibers.emplace_back(stack, Fiber::Idx(i));
     }
+
+    std::cout<<"Testing switch\n";
+    _fibers[0].switchTo(_fibers[2]);
+
+    std::cout<<"Finished setup\n";
 }
 
 } // namespace Fiberz
