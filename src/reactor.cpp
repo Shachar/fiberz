@@ -27,10 +27,9 @@ Reactor::Reactor(Params startup_params) :
         _fibers.emplace_back(stack, Fiber::Idx(i));
     }
 
-    std::cout<<"Testing switch\n";
-    _fibers[0].switchTo(_fibers[2]);
-
-    std::cout<<"Finished setup\n";
+    for( Fiber::Idx::UnderlyingType i=_startup_params.max_num_fibers-1; i>0; --i ) {
+        _free_list.push_back( _fibers[i] );
+    }
 }
 
 } // namespace Fiberz

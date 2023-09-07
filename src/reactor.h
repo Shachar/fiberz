@@ -16,10 +16,12 @@ static inline void ASSERT( bool cond, const char *message ) {
         abort();
     }
 }
+
 class Reactor {
-    Params                      _startup_params;
-    std::vector<Fiber>          _fibers;
-    UniqueMmap                  _stacks;
+    boost::intrusive::list<Fiber>       _free_list;
+    Params                              _startup_params;
+    std::vector<Fiber>                  _fibers;
+    UniqueMmap                          _stacks;
 
 public:
     explicit Reactor( Params startup_params );

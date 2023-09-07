@@ -4,13 +4,15 @@
 
 #include "context.h"
 
+#include <boost/intrusive/list.hpp>
+
 namespace Fiberz::Internal {
 
 class Fiber;
 
 extern "C" void main_trampoline(Fiber *_this);
 
-class Fiber {
+class Fiber : public boost::intrusive::list_base_hook<> {
 public:
     using Idx = Typed<"FiberIdx", FiberId::UnderlyingType, 0, std::ios::hex>;
 
