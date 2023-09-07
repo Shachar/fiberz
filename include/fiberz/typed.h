@@ -25,6 +25,9 @@ class Typed {
     Type _value;
 
 public:
+    using UnderlyingType = Type;
+    static constexpr Type Empty = EmptyValue;
+
     explicit constexpr Typed(Type value = EmptyValue) : _value(value) {}
 
     constexpr Typed(const Typed &that) = default;

@@ -3,4 +3,5 @@ lib_LTLIBRARIES=libfiberz.la
 AM_CPPFLAGS=-I$(top_srcdir)/include
 AM_CXXFLAGS=-std=c++20
 
-libfiberz_la_SOURCES=fiberz.cpp fiber.cpp reactor.cpp unique_mmap.cpp
+libfiberz_la_SOURCES=fiberz.cpp fiber.cpp reactor.cpp unique_mmap.cpp context.cpp
+libfiberz_la_SOURCES+=platform/$(host_cpu)/arch_context.cpp platform/$(host_cpu)/context_asm.s

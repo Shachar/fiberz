@@ -9,6 +9,7 @@ AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_CXX
+AM_PROG_AS
 LT_INIT
 
 # Checks for libraries.
