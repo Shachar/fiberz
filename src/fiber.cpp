@@ -2,6 +2,16 @@
 
 #include "reactor.h"
 
+namespace Fiberz {
+
+FiberId FiberHandle::getId() const {
+    static constexpr uint32_t COEFF = 0xb0f2df91;
+
+    return FiberId( param2 * COEFF + param1 );
+}
+
+}
+
 namespace Fiberz::Internal {
 
 void main_trampoline(Fiber *_this) {
@@ -13,7 +23,6 @@ Fiber::Fiber(void *stack_top, Idx idx) :
     _generation(0)
 {
     if( idx ) {
-        std::cout<<"Constructing fiber "<<this<<" "<<idx<<" stack top "<<stack_top<<"\n";
         _context.setup(stack_top, this, main_trampoline);
     }
 }
@@ -33,11 +42,9 @@ void Fiber::start( std::unique_ptr<ParametersBase> params ) {
 }
 
 void Fiber::main() {
-
-    std::cout<<"Running inside fiber "<<static_cast<void *>(this)<<" "<<_fiber_idx<<"\n";
-
     while(true) {
         ASSERT( !!_parameters, "Fiber running with no code to run" );
+        ASSERT( getState() == State::Running, "Running fiber is not marked running" );
 
         std::unique_ptr<ParametersBase> fiber_code = std::move(_parameters);
         fiber_code->invoke();

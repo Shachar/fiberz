@@ -25,7 +25,7 @@ private:
 
     std::unique_ptr<ParametersBase>     _parameters;
 
-    enum class State { Free, Ready, Waiting }
+    enum class State { Free, Ready, Running, Waiting }
                                         _state = State::Free;
 
 public:

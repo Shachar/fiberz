@@ -10,13 +10,15 @@
 
 namespace Fiberz::Internal {
 
-static inline void ASSERT( bool cond, const char *message ) {
+static inline void ASSERT_HELPER( bool cond, const char *message, const char *file, unsigned line ) {
     if( !cond ) {
-        std::cerr<<"ASSERTION FAILED: "<<message<<"\n";
+        std::cerr<<"ASSERTION FAILED "<<file<<":"<<line<<": "<<message<<"\n";
 
         abort();
     }
 }
+
+#define ASSERT(cond, message) ASSERT_HELPER((cond), (message), __FILE__, __LINE__) 
 
 class Reactor {
     boost::intrusive::list<Fiber>       _free_list;
@@ -41,6 +43,18 @@ public:
 
     void schedule( Fiber &fiber );
     void sleep();
+    void yield() {
+        schedule( currentFiber() );
+        sleep();
+    }
+
+    FiberHandle currentFiberHandle() const {
+        return currentFiber().getHandle();
+    }
+
+    FiberId currentFiberId() const {
+        return currentFiber().getHandle().getId();
+    }
 
 private:
     friend Fiber;
@@ -51,6 +65,7 @@ private:
     void fiberDone( Fiber &fiber );
 
     Fiber &currentFiber();
+    const Fiber &currentFiber() const;
 };
 
 extern thread_local std::optional<Reactor> the_reactor;

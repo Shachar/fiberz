@@ -83,6 +83,7 @@ void Reactor::switchToNext() {
     else {
         next = &_ready_list.front();
         _ready_list.pop_front();
+        next->setState( Fiber::State::Running );
     }
 
     switchTo( *next );
@@ -91,18 +92,32 @@ void Reactor::switchToNext() {
 void Reactor::switchTo( Fiber &next ) {
     Fiber &current = currentFiber();
 
+    if( &current == &next ) {
+        ASSERT( current.getState()==Fiber::State::Running, "Running fiber isn't marked running" );
+
+        // XXX Perform context switch tests
+        return;
+    }
+
+    if( current.getState()==Fiber::State::Running )
+        current.setState( Fiber::State::Waiting );
+
     _current_fiber = next.getIdx();
 
     current.switchTo( next );
 }
 
 void Reactor::fiberDone( Fiber &fiber ) {
-    ASSERT( fiber.getState() == Fiber::State::Ready, "Fiber not running is marked as done" );
+    ASSERT( fiber.getState() == Fiber::State::Running, "Fiber not running is marked as done" );
     fiber.setState( Fiber::State::Free );
     _free_list.push_front( fiber );
 }
 
 Fiber &Reactor::currentFiber() {
+    return _fibers[_current_fiber.get()];
+}
+
+const Fiber &Reactor::currentFiber() const {
     return _fibers[_current_fiber.get()];
 }
 

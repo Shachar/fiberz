@@ -7,8 +7,6 @@
 
 namespace Fiberz {
 
-using FiberId = Typed<"FiberId", uint16_t, 0xffff, std::ios::hex, 4>;
-
 /// Parameters sent on startup to initialize the reactor
 struct Params {
     /// Maximum number of concurrent fibers
@@ -22,6 +20,8 @@ struct Params {
 void init(Params params = Params());
 int start();
 
+void yield();
+
 template<typename F, typename... Arguments>
     requires std::invocable<F, Arguments...>
 FiberHandle createFiber(F &&callable, Arguments&&... arguments)
@@ -32,6 +32,11 @@ FiberHandle createFiber(F &&callable, Arguments&&... arguments)
                 std::forward<Arguments...>(arguments)...
             )
         );
+}
+
+FiberHandle currentFiberHandle();
+inline FiberId currentFiberId() {
+    return currentFiberHandle().getId();
 }
 
 } // namespace Fiberz
