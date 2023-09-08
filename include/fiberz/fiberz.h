@@ -1,6 +1,9 @@
 #pragma once
 
 #include <fiberz/typed.h>
+#include <fiberz/fiber_handle.h>
+
+#include <fiberz/internal/fiber_parameters.h>
 
 namespace Fiberz {
 
@@ -17,5 +20,18 @@ struct Params {
 };
 
 void init(Params params = Params());
+int start();
+
+template<typename F, typename... Arguments>
+    requires std::invocable<F, Arguments...>
+FiberHandle createFiber(F &&callable, Arguments&&... arguments)
+{
+    return Internal::createFiber(
+            std::make_unique< Internal::Parameters<F, Arguments...> >(
+                std::forward<F>(callable),
+                std::forward<Arguments...>(arguments)...
+            )
+        );
+}
 
 } // namespace Fiberz

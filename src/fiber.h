@@ -9,6 +9,7 @@
 namespace Fiberz::Internal {
 
 class Fiber;
+class Reactor;
 
 extern "C" void main_trampoline(Fiber *_this);
 
@@ -18,9 +19,14 @@ public:
 
 private:
     // Members
-    Context                     _context;
-    Idx                         _fiber_idx;
-    unsigned short              _generation = 0;
+    Context                             _context;
+    Idx                                 _fiber_idx;
+    unsigned short                      _generation = 0;
+
+    std::unique_ptr<ParametersBase>     _parameters;
+
+    enum class State { Free, Ready, Waiting }
+                                        _state = State::Free;
 
 public:
 
@@ -34,9 +40,28 @@ public:
 
     void switchTo(Fiber &next);
 
+    void start( std::unique_ptr<ParametersBase> params );
+
+    FiberHandle getHandle() const {
+        return FiberHandle( _fiber_idx.get(), _generation );
+    }
+
+    Idx getIdx() const {
+        return _fiber_idx;
+    }
+
 private:
     friend void main_trampoline(Fiber *fiber);
+    friend Reactor;
+
     void main();
+
+    State getState() const {
+        return _state;
+    }
+    void setState(State state) {
+        _state = state;
+    }
 };
 
 } // namespace Fiberz::Internal
