@@ -1,6 +1,9 @@
-#include "fiber.h"
+#include <fiberz/internal/fiber.h>
 
-#include "reactor.h"
+#include "utils.h"
+
+#include <fiberz/reactor.h>
+#include <fiberz/internal/fiber_parameters.h>
 
 namespace Fiberz {
 
@@ -49,8 +52,8 @@ void Fiber::main() {
         std::unique_ptr<ParametersBase> fiber_code = std::move(_parameters);
         fiber_code->invoke();
 
-        the_reactor->fiberDone( *this );
-        the_reactor->sleep();
+        reactor().fiberDone( *this );
+        reactor().sleep();
     }
 }
 

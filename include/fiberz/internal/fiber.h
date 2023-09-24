@@ -1,15 +1,21 @@
 #pragma once
 
-#include <fiberz/fiberz.h>
+#include <fiberz/fiber_handle.h>
 
-#include "context.h"
+#include <fiberz/internal/context.h>
 
 #include <boost/intrusive/list.hpp>
+
+#include <memory>
+
+namespace Fiberz {
+class Reactor;
+}
 
 namespace Fiberz::Internal {
 
 class Fiber;
-class Reactor;
+class ParametersBase;
 
 extern "C" void main_trampoline(Fiber *_this);
 

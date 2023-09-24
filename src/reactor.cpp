@@ -1,15 +1,21 @@
-#include "reactor.h"
+#include <fiberz/reactor.h>
 
 #include <fiberz/exceptions.h>
+
+#include <fiberz/internal/fiber_parameters.h>
+
+#include "utils.h"
 
 #include <sys/mman.h>
 #include <unistd.h>
 
-namespace Fiberz::Internal {
+namespace Fiberz {
+
+using namespace Internal;
 
 thread_local std::optional<Reactor> the_reactor;
 
-Reactor::Reactor(Params startup_params) :
+Reactor::Reactor(StartupParams startup_params) :
     _startup_params(startup_params),
     _stacks(
             nullptr,
@@ -40,32 +46,18 @@ Reactor::~Reactor() {
     _free_list.clear();
 }
 
+void Reactor::init(StartupParams params) {
+    ASSERT( !the_reactor, "Tried to initialize an already initialized Fiberz reactor" );
+
+    the_reactor.emplace( std::move(params) );
+}
+
 int Reactor::start() {
     while( ! _ready_list.empty() ) {
         switchToNext();
     }
 
     return 0;
-}
-
-FiberHandle Reactor::createFiber( std::unique_ptr<ParametersBase> parameters ) {
-    if( _free_list.empty() )
-        throw NoFreeFibers();
-
-    Fiber &free_fiber = _free_list.front();
-    _free_list.pop_front();
-
-    free_fiber.start( std::move(parameters) );
-
-    schedule(free_fiber);
-
-    return free_fiber.getHandle();
-}
-
-void Reactor::schedule( Fiber &fiber ) {
-    ASSERT( fiber.getState() != Fiber::State::Free, "Trying to schedule a free fiber" );
-    _ready_list.push_back(fiber);
-    fiber.setState( Fiber::State::Ready );
 }
 
 void Reactor::sleep() {
@@ -119,6 +111,32 @@ Fiber &Reactor::currentFiber() {
 
 const Fiber &Reactor::currentFiber() const {
     return _fibers[_current_fiber.get()];
+}
+
+FiberHandle Reactor::createFiber( std::unique_ptr<ParametersBase> parameters ) {
+    if( _free_list.empty() )
+        throw NoFreeFibers();
+
+    Fiber &free_fiber = _free_list.front();
+    _free_list.pop_front();
+
+    free_fiber.start( std::move(parameters) );
+
+    schedule(free_fiber);
+
+    return free_fiber.getHandle();
+}
+
+void Reactor::schedule( Fiber &fiber ) {
+    ASSERT( fiber.getState() != Fiber::State::Free, "Trying to schedule a free fiber" );
+    _ready_list.push_back(fiber);
+    fiber.setState( Fiber::State::Ready );
+}
+
+Reactor &reactor() {
+    ASSERT( the_reactor.has_value(), "Trying to reference an uninitialized reactor" );
+
+    return *the_reactor;
 }
 
 } // namespace Fiberz

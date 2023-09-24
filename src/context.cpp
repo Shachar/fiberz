@@ -1,4 +1,4 @@
-#include "context.h"
+#include <fiberz/internal/context.h>
 
 extern "C" void fiberz_fiber_context_switch(void **old_sp, void *new_sp);
 

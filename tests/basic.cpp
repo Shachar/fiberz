@@ -1,9 +1,9 @@
-#include "fiberz/fiberz.h"
+#include <fiberz/reactor.h>
 
 int fiberBody(int a) {
     while( a>0 ) {
-        std::cout<<"Fiber "<<Fiberz::currentFiberId()<<" running "<<a<<"\n";
-        Fiberz::yield();
+        std::cout<<"Fiber "<<Fiberz::reactor().currentFiberId()<<" running "<<a<<"\n";
+        Fiberz::reactor().yield();
         --a;
     }
 
@@ -11,17 +11,17 @@ int fiberBody(int a) {
 }
 
 int main() {
-    Fiberz::init();
+    Fiberz::Reactor::init();
 
-    Fiberz::createFiber( fiberBody, 5 );
-    Fiberz::createFiber( fiberBody, 2 );
-    Fiberz::createFiber( fiberBody, 8 );
-    Fiberz::createFiber( fiberBody, 3 );
-    Fiberz::createFiber( fiberBody, 9 );
-    Fiberz::createFiber( fiberBody, 1 );
-    Fiberz::createFiber( fiberBody, 1 );
-    Fiberz::createFiber( fiberBody, 5 );
-    Fiberz::createFiber( fiberBody, 7 );
+    Fiberz::reactor().createFiber( fiberBody, 5 );
+    Fiberz::reactor().createFiber( fiberBody, 2 );
+    Fiberz::reactor().createFiber( fiberBody, 8 );
+    Fiberz::reactor().createFiber( fiberBody, 3 );
+    Fiberz::reactor().createFiber( fiberBody, 9 );
+    Fiberz::reactor().createFiber( fiberBody, 1 );
+    Fiberz::reactor().createFiber( fiberBody, 1 );
+    Fiberz::reactor().createFiber( fiberBody, 5 );
+    Fiberz::reactor().createFiber( fiberBody, 7 );
 
-    return Fiberz::start();
+    return Fiberz::reactor().start();
 }
