@@ -53,20 +53,31 @@ void Reactor::init(StartupParams params) {
 }
 
 int Reactor::start() {
+    // Main fiber main loop
     while( ! _ready_list.empty() ) {
+        _fibers[0].setState( Fiber::State::Ready );     // Main fiber is always ready
         switchToNext();
     }
+
+    std::cout<<"Normal reactor exit\n";
 
     return 0;
 }
 
-void Reactor::sleep() {
-    Fiber &current = currentFiber();
-    if( current.getState() != Fiber::State::Free )
-        current.setState( Fiber::State::Waiting );
-
-    switchToNext();
+void Reactor::killFiber( FiberHandle handle ) {
+    if( isValid(handle) )
+        schedule( handle, true, []() { throw Internal::Fiber::FiberKilled(); } );
 }
+
+bool Reactor::isValid( FiberHandle handle ) const {
+    if( !handle.isSet() )
+        return false;
+
+    return _fibers.at( handle.param1 )._generation == handle.param2;
+}
+
+
+// Private
 
 void Reactor::switchToNext() {
     Fiber *next;
@@ -75,7 +86,6 @@ void Reactor::switchToNext() {
     else {
         next = &_ready_list.front();
         _ready_list.pop_front();
-        next->setState( Fiber::State::Running );
     }
 
     switchTo( *next );
@@ -85,23 +95,26 @@ void Reactor::switchTo( Fiber &next ) {
     Fiber &current = currentFiber();
 
     if( &current == &next ) {
-        ASSERT( current.getState()==Fiber::State::Running, "Running fiber isn't marked running" );
+        if( next.getState()==Fiber::State::Ready ) {
+            next.setState( Fiber::State::Unscheduled );
+        }
+        next.unlink();
 
         // XXX Perform context switch tests
         return;
     }
 
-    if( current.getState()==Fiber::State::Running )
-        current.setState( Fiber::State::Waiting );
-
     _current_fiber = next.getIdx();
 
     current.switchTo( next );
+
+    // After the switch
 }
 
 void Reactor::fiberDone( Fiber &fiber ) {
-    ASSERT( fiber.getState() == Fiber::State::Running, "Fiber not running is marked as done" );
+    ASSERT( fiber.getState() != Fiber::State::Free, "Terminating fiber already marked FREE" );
     fiber.setState( Fiber::State::Free );
+    fiber.unlink();
     _free_list.push_front( fiber );
 }
 
@@ -111,6 +124,12 @@ Fiber &Reactor::currentFiber() {
 
 const Fiber &Reactor::currentFiber() const {
     return _fibers[_current_fiber.get()];
+}
+
+Internal::Fiber &Reactor::lookupFiber( FiberHandle handle ) {
+    ASSERT( isValid( handle ), "Trying to dereference an invalid fiber handle" );
+
+    return _fibers[ handle.param1 ];
 }
 
 FiberHandle Reactor::createFiber( std::unique_ptr<ParametersBase> parameters ) {
@@ -127,11 +146,52 @@ FiberHandle Reactor::createFiber( std::unique_ptr<ParametersBase> parameters ) {
     return free_fiber.getHandle();
 }
 
-void Reactor::schedule( Fiber &fiber ) {
-    ASSERT( fiber.getState() != Fiber::State::Free, "Trying to schedule a free fiber" );
-    _ready_list.push_back(fiber);
-    fiber.setState( Fiber::State::Ready );
+void Reactor::schedule( FiberHandle handle, bool highPriority ) {
+    if( !isValid(handle) )
+        // XXX Log?
+        return;
+
+    schedule( lookupFiber( handle ), highPriority );
 }
+
+void Reactor::schedule( Fiber &fiber, bool highPriority ) {
+    ASSERT( fiber.getState() != Fiber::State::Free, "Trying to schedule a free fiber" );
+
+    if( highPriority ) {
+        if( fiber.is_linked() )
+            fiber.unlink();
+
+        _ready_list.push_front(fiber);
+    } else {
+        auto fiberState = fiber.getState();
+        if( fiberState == Fiber::State::Unscheduled || fiberState == Fiber::State::Starting )
+            _ready_list.push_back(fiber);
+    }
+
+    if( fiber.getState() != Fiber::State::Starting )
+        fiber.setState( Fiber::State::Ready );
+}
+
+void Reactor::schedule( FiberHandle handle, std::unique_ptr<Internal::ParametersBase> parameters, bool highPriority ) {
+    if( !isValid(handle) )
+        // XXX Log?
+        return;
+
+    schedule( lookupFiber( handle ), std::move( parameters ), highPriority );
+}
+
+void Reactor::schedule( Internal::Fiber &fiber, std::unique_ptr<Internal::ParametersBase> parameters, bool highPriority ) {
+    ASSERT( fiber.getState() != Fiber::State::Free, "Trying to schedule a free fiber" );
+
+    if( fiber._parameters ) {
+        // XXX Log("Replacing previous callback with new one");
+    }
+
+    fiber._parameters = std::move(parameters);
+
+    schedule( fiber, highPriority );
+}
+
 
 Reactor &reactor() {
     ASSERT( the_reactor.has_value(), "Trying to reference an uninitialized reactor" );

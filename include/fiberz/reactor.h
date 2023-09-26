@@ -22,8 +22,8 @@ struct StartupParams {
 };
 
 class Reactor {
-    boost::intrusive::list<Internal::Fiber>     _free_list;
-    boost::intrusive::list<Internal::Fiber>     _ready_list;
+    //boost::intrusive::list<Internal::Fiber, boost::intrusive::constant_time_size<false>>
+    Internal::FiberList                         _free_list, _ready_list;
     StartupParams                               _startup_params;
     std::vector<Internal::Fiber>                _fibers;
     UniqueMmap                                  _stacks;
@@ -53,10 +53,30 @@ public:
                 );
     }
 
-    void sleep();
+    void sleep() {
+        switchToNext();
+    }
+    void killFiber( FiberHandle handle );
+
     void yield() {
         schedule( currentFiber() );
         sleep();
+    }
+
+    void schedule( FiberHandle handle, bool highPriority = false );
+
+    template<typename F, typename... Arguments>
+            requires std::invocable<F, Arguments...>
+    void schedule( FiberHandle handle, bool highPriority, F &&callable, Arguments&&... arguments ) {
+        schedule(
+                handle,
+                std::make_unique< Internal::Parameters<F, Arguments...> >(
+                    std::forward<F>(callable),
+                    std::forward<Arguments...>(arguments)...
+                    ),
+                highPriority
+                );
+
     }
 
     FiberHandle currentFiberHandle() const {
@@ -66,6 +86,8 @@ public:
     FiberId currentFiberId() const {
         return currentFiber().getHandle().getId();
     }
+
+    bool isValid( FiberHandle handle ) const;
 
 private:
     friend Internal::Fiber;
@@ -78,8 +100,12 @@ private:
     Internal::Fiber &currentFiber();
     const Internal::Fiber &currentFiber() const;
 
+    Internal::Fiber &lookupFiber( FiberHandle handle );
+
     FiberHandle createFiber( std::unique_ptr<Internal::ParametersBase> parameters );
-    void schedule( Internal::Fiber &fiber );
+    void schedule( Internal::Fiber &fiber, bool highPriority = false );
+    void schedule( FiberHandle handle, std::unique_ptr<Internal::ParametersBase> parameters, bool highPriority = false );
+    void schedule( Internal::Fiber &fiber, std::unique_ptr<Internal::ParametersBase> parameters, bool highPriority = false );
 };
 
 Reactor &reactor();

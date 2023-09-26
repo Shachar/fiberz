@@ -1,8 +1,9 @@
-noinst_PROGRAMS=basic
+noinst_PROGRAMS=basic killer
 
-basic_LDADD=$(top_builddir)/src/libfiberz.la
+LDADD=$(top_builddir)/src/libfiberz.la
 
 AM_CPPFLAGS=-I$(top_srcdir)/include
 AM_CXXFLAGS=-std=c++20
 
 basic_SOURCES=basic.cpp
+killer_SOURCES=killer.cpp

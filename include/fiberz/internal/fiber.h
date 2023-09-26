@@ -19,11 +19,20 @@ class ParametersBase;
 
 extern "C" void main_trampoline(Fiber *_this);
 
-class Fiber : public boost::intrusive::list_base_hook<> {
+using ListMode = boost::intrusive::link_mode< boost::intrusive::auto_unlink >;
+using FiberList = boost::intrusive::list<Fiber, boost::intrusive::constant_time_size<false>>;
+/*
+using ListMode = boost::intrusive::link_mode< boost::intrusive::safe_link >;
+using FiberList = boost::intrusive::list<Fiber>;
+*/
+
+class Fiber : public boost::intrusive::list_base_hook< ListMode > {
 public:
     using Idx = Typed<"FiberIdx", FiberId::UnderlyingType, 0, std::ios::hex>;
 
 private:
+    class FiberKilled {};       // Exception object used to kill a running fiber.
+
     // Members
     Context                             _context;
     Idx                                 _fiber_idx;
@@ -31,7 +40,7 @@ private:
 
     std::unique_ptr<ParametersBase>     _parameters;
 
-    enum class State { Free, Ready, Running, Waiting }
+    enum class State { Free, Starting, Ready, Unscheduled }
                                         _state = State::Free;
 
 public:

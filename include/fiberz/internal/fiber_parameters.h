@@ -10,7 +10,7 @@ class ParametersBase {
 public:
     virtual ~ParametersBase() = default;
 
-    virtual int invoke() = 0;
+    virtual void invoke() = 0;
 };
 
 template<typename Callable, typename... Arguments>
@@ -25,8 +25,8 @@ public:
         _callable( std::forward<Callable>(callable) )
     {}
 
-    int invoke() override {
-        return std::apply<Callable, decltype(_arguments)>(
+    void invoke() override {
+        std::apply<Callable, decltype(_arguments)>(
                 std::forward<Callable>(_callable),
                 std::move( _arguments )
             );
