@@ -54,6 +54,7 @@ public:
     Fiber &operator=(Fiber &&that) = default;
 
     void switchTo(Fiber &next);
+    void postSwitch();
 
     void start( std::unique_ptr<ParametersBase> params );
 
@@ -77,6 +78,20 @@ private:
     void setState(State state) {
         _state = state;
     }
+
+    friend std::ostream & operator<<( std::ostream &out, Fiber::State state ) {
+        switch( state ) {
+#define CASE(s) case Fiber::State::s: return out<<#s
+            CASE(Free);
+            CASE(Starting);
+            CASE(Ready);
+            CASE(Unscheduled);
+#undef CASE
+        }
+
+        return out<<"Fiber::State("<<static_cast<int>(state)<<")";
+    }
 };
+
 
 } // namespace Fiberz::Internal

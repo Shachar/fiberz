@@ -73,7 +73,7 @@ bool Reactor::isValid( FiberHandle handle ) const {
     if( !handle.isSet() )
         return false;
 
-    return _fibers.at( handle.param1 )._generation == handle.param2;
+    return _fibers.at( handle.param1 )._generation == handle.param2 && _fibers.at(handle.param1).getState() != Fiber::State::Free;
 }
 
 
@@ -95,12 +95,13 @@ void Reactor::switchTo( Fiber &next ) {
     Fiber &current = currentFiber();
 
     if( &current == &next ) {
-        if( next.getState()==Fiber::State::Ready ) {
-            next.setState( Fiber::State::Unscheduled );
-        }
+        ASSERT( next.getState()!=Fiber::State::Starting, "Starting fiber somehow scheduled itself" );
+
+        next.setState( Fiber::State::Unscheduled );
         next.unlink();
 
-        // XXX Perform context switch tests
+        next.postSwitch();
+
         return;
     }
 
@@ -164,19 +165,23 @@ void Reactor::schedule( Fiber &fiber, bool highPriority ) {
         _ready_list.push_front(fiber);
     } else {
         auto fiberState = fiber.getState();
-        if( fiberState == Fiber::State::Unscheduled || fiberState == Fiber::State::Starting )
+        if(
+                fiberState == Fiber::State::Unscheduled ||
+                (
+                    fiberState == Fiber::State::Starting &&
+                    !fiber.is_linked()
+                )
+          )
+        {
             _ready_list.push_back(fiber);
+        }
     }
 
-    if( fiber.getState() != Fiber::State::Starting )
+    if( fiber.getState() == Fiber::State::Unscheduled )
         fiber.setState( Fiber::State::Ready );
 }
 
 void Reactor::schedule( FiberHandle handle, std::unique_ptr<Internal::ParametersBase> parameters, bool highPriority ) {
-    if( !isValid(handle) )
-        // XXX Log?
-        return;
-
     schedule( lookupFiber( handle ), std::move( parameters ), highPriority );
 }
 

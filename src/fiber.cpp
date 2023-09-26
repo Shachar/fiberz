@@ -31,22 +31,24 @@ Fiber::Fiber(void *stack_top, Idx idx) :
 }
 
 void Fiber::switchTo(Fiber &next) {
-    if( next.getState() != State::Starting ) {
-        ASSERT( next.getState() == State::Ready, "Fiber entering execution isn't READY" );
-        next.setState( State::Unscheduled );
-    }
-
     _context.switchTo(next._context);
 
+    postSwitch();
+}
+
+void Fiber::postSwitch() {
     // Post switch callbacks
     if( _parameters && getState() != State::Starting ) {
         std::unique_ptr<ParametersBase> hook = std::move(_parameters);
         hook->invoke();
     }
+
+    ASSERT( getState() != State::Free, "Free fiber scheduled" );
+    setState( State::Unscheduled );
 }
 
 void Fiber::start( std::unique_ptr<ParametersBase> params ) {
-    ASSERT( _state == State::Free, "Trying to start fiber that is not FREE" );
+    ASSERT( getState() == State::Free, "Trying to start fiber that is not FREE" );
     ASSERT( !_parameters, "Trying to set start parameters that are already set" );
 
     _generation++;
@@ -56,10 +58,11 @@ void Fiber::start( std::unique_ptr<ParametersBase> params ) {
 }
 
 void Fiber::main() {
+    postSwitch();
+
     while(true) {
         ASSERT( !!_parameters, "Fiber running with no code to run" );
-        ASSERT( getState() == State::Starting, "Starting fiber is not STARTING" );
-        setState( State::Unscheduled );
+        ASSERT( getState() == State::Unscheduled, "Fiber started committed" );
 
         try {
             std::unique_ptr<ParametersBase> fiber_code = std::move(_parameters);
