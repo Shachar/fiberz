@@ -22,7 +22,7 @@ public:
     UniqueMmap &operator=(const UniqueMmap &that) = delete;
 
     constexpr UniqueMmap(UniqueMmap &&that) = default;
-    constexpr UniqueMmap &operator=(UniqueMmap &&that) = default;
+    UniqueMmap &operator=(UniqueMmap &&that) = default;
 
     std::byte *get() {
         return _data.data();

@@ -48,11 +48,11 @@ public:
     }
 
     constexpr bool operator==(Typed that) const {
-        return this.get() == that.get();
+        return this->get() == that.get();
     }
     
     constexpr bool operator!=(Typed that) const {
-        return this.get() != that.get();
+        return this->get() != that.get();
     }
     
     friend std::ostream &operator<<(std::ostream &out, Typed typed) {
