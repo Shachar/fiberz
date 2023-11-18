@@ -5,6 +5,7 @@
 
 #include <fiberz/internal/fiber.h>
 #include <fiberz/internal/fiber_parameters.h>
+#include <fiberz/internal/cascaded_time_queue.h>
 
 #include <iostream>
 #include <optional>
@@ -19,6 +20,11 @@ struct StartupParams {
     size_t fiber_stack_pages = 4;
     /// Number of guard pages between fibers' stacks. All non-zero numbers effectively cost the same.
     size_t fiber_stack_guard_pages = 2;
+
+    /// Timer resolution
+    Duration timer_resolution = 1ms;
+    /// Time queue levels
+    size_t num_time_queue_levels = 5;
 };
 
 class Reactor {
@@ -28,6 +34,7 @@ class Reactor {
     std::vector<Internal::Fiber>                _fibers;
     UniqueMmap                                  _stacks;
     Internal::Fiber::Idx                        _current_fiber = Internal::Fiber::Idx(0);
+    Internal::CascadedTimeQueue                 _time_queue;
 
 public:
     explicit Reactor( StartupParams startup_params );

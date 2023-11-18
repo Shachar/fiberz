@@ -41,21 +41,31 @@ private:
     CompactIntrusiveList_Node *head_ = nullptr;
 
 public:
+    using NodePtr = boost::intrusive_ptr<T>;
+    using NodeCPtr = boost::intrusive_ptr<const T>;
+
     explicit CompactIntrusiveList() = default;
 
+    // Can't copy
     CompactIntrusiveList( const CompactIntrusiveList &that ) = delete;
     CompactIntrusiveList &operator=( const CompactIntrusiveList &that ) = delete;
-    CompactIntrusiveList( const CompactIntrusiveList &&that ) = delete;
-    CompactIntrusiveList &operator=( const CompactIntrusiveList &&that ) = delete;
+
+    // Can move
+    CompactIntrusiveList( CompactIntrusiveList &&that ) : head_(that.head_) {
+        that.head_ = nullptr;
+    }
+    CompactIntrusiveList &operator=( CompactIntrusiveList that ) {
+        swap(that);
+    }
 
     ~CompactIntrusiveList() {
         clear();
     }
 
-    boost::intrusive_ptr<T> front() { assert( !empty() ); return ptr(head_); }
-    boost::intrusive_ptr<const T> front() const { assert( !empty() ); return ptr(head_); }
-    boost::intrusive_ptr<T> back() { assert( !empty() ); return ptr(head_->prev); }
-    boost::intrusive_ptr<const T> back() const { assert( !empty() ); return ptr(head_->prev); }
+    NodePtr front() { assert( !empty() ); return ptr(head_); }
+    NodeCPtr front() const { assert( !empty() ); return ptr(head_); }
+    NodePtr back() { assert( !empty() ); return ptr(head_->prev); }
+    NodeCPtr back() const { assert( !empty() ); return ptr(head_->prev); }
 
     // Mark as [[nodiscard]] so users don't confuse with clear()
     [[nodiscard]] bool empty() const {
@@ -68,7 +78,7 @@ public:
         }
     }
 
-    void push_front( boost::intrusive_ptr<T> element ) {
+    void push_front( NodePtr element ) {
         CompactIntrusiveList_Node *node = nodeptr(element.get());
 
         assert( node->next == nullptr );
@@ -89,7 +99,7 @@ public:
         intrusive_ptr_add_ref( element.get() );
     }
 
-    void push_back( boost::intrusive_ptr<T> element ) {
+    void push_back( NodePtr element ) {
         push_front( std::move(element) );
 
         head_ = head_->next;
@@ -135,6 +145,29 @@ public:
         old_tail->next = nullptr;
         old_tail->prev = nullptr;
         intrusive_ptr_release( ptr(old_tail) );
+    }
+
+    void erase( T *ptr ) {
+        auto node = nodeptr( ptr );
+
+        assert( node->next != nullptr );
+
+        if( node->next == node ) {
+            // List with just one element
+            assert( node->prev == node );
+            assert( head_ == node );    // Not a member of _our_ list
+
+            head_ = nullptr;
+        } else {
+            node->next->prev = node->prev;
+            node->prev->next = node->next;
+
+            if( head_ == node )
+                head_ = node->next;
+        }
+
+        node->next = nullptr;
+        node->prev = nullptr;
     }
 
     void swap( CompactIntrusiveList &that ) noexcept {

@@ -23,7 +23,8 @@ Reactor::Reactor(StartupParams startup_params) :
                 startup_params.max_num_fibers * getpagesize(),
             PROT_READ|PROT_WRITE,
             MAP_STACK|MAP_SHARED
-           )
+           ),
+    _time_queue( now(), startup_params.num_time_queue_levels, startup_params.timer_resolution )
 {
     _fibers.reserve(startup_params.max_num_fibers);
 
