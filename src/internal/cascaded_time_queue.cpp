@@ -149,13 +149,15 @@ void CascadedTimeQueue::advanceTime( TimePoint tp ) {
         // Distribute the events in this node to the relevant lower level nodes
         ListType events( std::move( cascaded_list_[level][level_idx] ) );
 
+        if( !events.empty() )
+            next_event_tick_ = NoNextEvent;
+
         while( !events.empty() ) {
             auto front = events.front();
             events.pop_front();
             front->owner = nullptr;
-            insert( std::move(front), level );
 
-            next_event_tick_ = NextEventUnknown;
+            insert( std::move(front), level );
         }
 
         advanceTime( tp );

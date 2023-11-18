@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     assert( tq.expiredEvent( now ).isEmpty() );
 
     auto start_time = now;
-    for( unsigned i=0; i<1'000'000; ++i ) {
+    for( unsigned i=0; i<10'000'000; ++i ) {
         auto time = now + std::chrono::milliseconds( uniform_dist(e1) );
 
         if( events.find( time ) != events.end() )
