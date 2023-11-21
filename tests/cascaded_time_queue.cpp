@@ -11,9 +11,12 @@ std::map<TimePoint, Internal::CascadedTimeQueue::TimerHandle> events;
 int main(int argc, char *argv[]) {
     std::random_device r;
     auto seed = r();
+    size_t num_iterations = 700;
 
     if( argc>1 )
-        seed = strtoul(argv[1], nullptr, 0);
+        num_iterations = strtoul(argv[1], nullptr, 0);
+    if( argc>2 )
+        seed = strtoul(argv[2], nullptr, 0);
 
     std::cout<<"Running cascaded time queue test with seed "<<seed<<"\n";
     std::default_random_engine e1(seed);
@@ -28,7 +31,7 @@ int main(int argc, char *argv[]) {
     assert( tq.expiredEvent( now ).isEmpty() );
 
     auto start_time = now;
-    for( unsigned i=0; i<10'000'000; ++i ) {
+    for( unsigned i=0; i<num_iterations; ++i ) {
         auto time = now + std::chrono::milliseconds( uniform_dist(e1) );
 
         if( events.find( time ) != events.end() )

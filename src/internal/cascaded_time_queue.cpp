@@ -34,7 +34,9 @@ CascadedTimeQueue::CascadedTimeQueue( TimePoint current_time, size_t numLevels, 
     cascaded_list_( numLevels ),
     start_( current_time ),
     ticks_count_(0),
-    resolution_(resolution)
+    next_event_tick_( NoNextEvent ),
+    resolution_( resolution ),
+    first_occupied_level_( numLevels )
 {}
 
 void CascadedTimeQueue::removeEvent( const TimerHandle &handle ) {
@@ -71,23 +73,38 @@ CascadedTimeQueue::TimerHandle CascadedTimeQueue::expiredEvent( TimePoint now ) 
 
 // Private
 void CascadedTimeQueue::recalcNextEvent() {
-    long ticksPerCell = 1;
-    size_t level_idx = 0;
+    long step = 1;
 
-    for( const auto &level : cascaded_list_ ) {
-        long tick = firstTickOfLevel( level_idx );
-        for( const auto &list : level ) {
-            if( ! list.empty() ) {
-          next_event_tick_ = tick;
-                return;
+    long tick = ticks_count_;
+
+    for( size_t level_num = 0; level_num<cascaded_list_.size(); level_num++ ) {
+        long level_start = firstTickOfLevel( level_num );
+        long level_end = level_start + NodesPerLevel*step;
+
+        if( level_num>=first_occupied_level_ ) {
+            unsigned level_idx = tick % (step * NodesPerLevel) / step;
+            if( level_num!=0 && level_idx==0 )
+                level_idx=NodesPerLevel;
+
+            for( ; level_idx<NodesPerLevel; level_idx++ ) {
+                auto &list = cascaded_list_[level_num][level_idx];
+                if( ! list.empty() ) {
+                    next_event_tick_ = level_start + step * level_idx;
+                    return;
+                }
             }
 
-            tick += ticksPerCell;
+            tick = level_end;
+            first_occupied_level_ = level_num+1;
+        } else {
+            tick = level_end;
         }
 
-        ticksPerCell *= NodesPerLevel;
-        level_idx++;
+        step *= NodesPerLevel;
+        assert( tick == level_end );
     }
+
+    assert( first_occupied_level_ == cascaded_list_.size() );
 
     next_event_tick_ = NoNextEvent;
 }
@@ -125,39 +142,61 @@ void CascadedTimeQueue::advanceTime( TimePoint tp ) {
     }
 
     size_t step = 1, mask = NodesPerLevel;
-    size_t level = 0, level_idx = ticks_count_ % mask;
+    size_t level_num = 0;
 
-    while( ticks_count_ < time_point_ticks && cascaded_list_[level][level_idx].empty() ) {
+    while( level_num < first_occupied_level_ ) {
+        level_num++;
+        step = mask;
+        mask *= NodesPerLevel;
+    }
+
+    size_t level_idx = ticks_count_ % mask;
+    // Round up
+    level_idx += step - 1;
+    level_idx /= step;
+
+    ticks_count_ = firstTickOfLevel(level_num) + level_idx * step;
+    assert( ticks_count_<=time_point_ticks );
+
+    while( ticks_count_ < time_point_ticks && cascaded_list_[level_num][level_idx].empty() ) {
         ticks_count_ += step;
-        level_idx = ticks_count_ % mask / step;
+        level_idx++;
 
         if( level_idx != 0 )
             continue;   // Fast path
 
         // Start from the next level as we already know we finished the first one
         do {
-            level++;
+            level_num++;
             step = mask;
             mask *= NodesPerLevel;
             level_idx = ticks_count_ % mask / step;
 
-            assert( level < cascaded_list_.size() );    // We finished the time queue
+            assert( level_num < cascaded_list_.size() );    // We finished the time queue
         } while( ticks_count_ % mask == 0 );
     }
 
-    if( level>0 ) { // Acts as recursion termination condition
-        // Distribute the events in this node to the relevant lower level nodes
-        ListType events( std::move( cascaded_list_[level][level_idx] ) );
+    if( !cascaded_list_[level_num][level_idx].empty() )
+        first_occupied_level_ = level_num;
 
-        if( !events.empty() )
+    if( level_num>0 ) { // Acts as recursion termination condition
+        // Distribute the events in this node to the relevant lower level nodes
+        ListType events( std::move( cascaded_list_.at(level_num).at(level_idx) ) );
+
+        if( !events.empty() ) {
+            // The events we're currently distributing are, by definition, the earliest in the array. By marking
+            // the next event NoNextEvent, we make sure it's coorectly set after redistribution
             next_event_tick_ = NoNextEvent;
+        }
 
         while( !events.empty() ) {
             auto front = events.front();
             events.pop_front();
             front->owner = nullptr;
 
-            insert( std::move(front), level );
+            insert( std::move(front), level_num );
+
+            assert( first_occupied_level_<level_num );
         }
 
         advanceTime( tp );
@@ -172,29 +211,32 @@ void CascadedTimeQueue::insert( ListType::NodePtr event, size_t max_level ) {
         event_tick = ticks_count_;
 
     // Find the level into which this event needs to go
-    size_t level = 0;
+    size_t level_num = 0;
     size_t step = 1;
 
-    long level_start = firstTickOfLevel(level);
+    long level_start = firstTickOfLevel(level_num);
     long level_end = level_start + step*NodesPerLevel;
     while( event_tick >= level_end ) {
-        level += 1;
-        assert( level<max_level );
+        level_num += 1;
+        assert( level_num<max_level );
 
         step *= NodesPerLevel;
 
-        level_start = firstTickOfLevel(level);
+        level_start = firstTickOfLevel(level_num);
         level_end = level_start + step*NodesPerLevel;
     }
 
     const size_t level_idx = (event_tick - level_start) / step;
 
-    event->owner = &cascaded_list_[level][level_idx];
+    event->owner = &cascaded_list_[level_num][level_idx];
 
-    cascaded_list_[level][level_idx].push_back( std::move(event) );
+    cascaded_list_[level_num][level_idx].push_back( std::move(event) );
 
     if( event_tick < next_event_tick_ )
         next_event_tick_ = event_tick;
+
+    if( level_num < first_occupied_level_ )
+        first_occupied_level_ = level_num;
 }
 
 void CascadedTimeQueue::insertEvent( TimePoint expiery, Callback callback ) {

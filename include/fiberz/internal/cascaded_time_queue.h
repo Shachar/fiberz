@@ -46,8 +46,9 @@ class CascadedTimeQueue {
             >
         > cascaded_list_;
     TimePoint start_;
-    long ticks_count_ = 0, next_event_tick_ = NoNextEvent;
+    long ticks_count_ = 0, next_event_tick_ = NextEventUnknown;
     Duration resolution_;
+    unsigned first_occupied_level_ = 0;
 
 public:
     class TimerHandle {
