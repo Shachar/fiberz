@@ -6,12 +6,15 @@
 namespace Fiberz::Internal {
 
 class CascadedTimeQueue {
+public:
+    using Callback = std::function<void(TimePoint)>;
+
+private:
     static constexpr size_t NodesPerLevel = 256;
 
-    class TimerEvent;
+    struct TimerEvent;
     static constexpr size_t NodeOffsetInEvent = 0;
     using ListType = Containers::CompactIntrusiveList< TimerEvent, NodeOffsetInEvent >;
-    using Callback = std::function<void()>;
 
     struct TimerEvent {
         Containers::CompactIntrusiveList_Node node;
@@ -75,7 +78,6 @@ public:
         bool isEmpty() const { return !event_; }
         bool isValid() const;
 
-        void call() const;
         TimePoint getTime() const;
     };
 
@@ -86,10 +88,11 @@ public:
 
     void insertEvent( TimePoint expiery, Callback callback );
     [[nodiscard]] TimerHandle insertEventWithHandle( TimePoint expiery, Callback callback );
+    [[nodiscard]] TimerHandle insertRecurringEvent( Duration period, Callback callback );
     void removeEvent( const TimerHandle &handle );
 
     TimePoint nextEvent();
-    TimerHandle expiredEvent( TimePoint now );
+    bool executeEvent( TimePoint now );
 
 private:
     void recalcNextEvent();

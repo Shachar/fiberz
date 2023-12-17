@@ -63,6 +63,9 @@ public:
     void sleep() {
         switchToNext();
     }
+
+    void sleep(TimePoint wakeup);
+
     void killFiber( FiberHandle handle );
 
     void yield() {
@@ -95,6 +98,17 @@ public:
     }
 
     bool isValid( FiberHandle handle ) const;
+
+    using TimerCallback = Internal::CascadedTimeQueue::Callback;
+    using TimerHandle = Internal::CascadedTimeQueue::TimerHandle;
+
+    void registerTimer( TimePoint expiery, TimerCallback callback );
+    [[nodiscard]] TimerHandle registerCancellableTimer( TimePoint expiery, TimerCallback callback ) {
+        return _time_queue.insertEventWithHandle( expiery, callback );
+    }
+    [[nodiscard]] TimerHandle registerRecurringTimer( Duration period, TimerCallback callback ) {
+        return _time_queue.insertRecurringEvent( period, std::move(callback) );
+    }
 
 private:
     friend Internal::Fiber;

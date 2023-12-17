@@ -65,6 +65,14 @@ int Reactor::start() {
     return 0;
 }
 
+void Reactor::sleep(TimePoint wakeup) {
+    auto thisFiber = currentFiberHandle();
+
+    // By using the handle we guarantee that if the fiber is cancelled, the timer gets cancelled as well.
+    auto timerHandle = registerCancellableTimer( wakeup, [this, thisFiber](TimePoint) { schedule(thisFiber); } );
+    yield();
+}
+
 void Reactor::killFiber( FiberHandle handle ) {
     if( isValid(handle) )
         schedule( handle, true, []() { throw Internal::Fiber::FiberKilled(); } );
@@ -76,7 +84,6 @@ bool Reactor::isValid( FiberHandle handle ) const {
 
     return _fibers.at( handle.param1 )._generation == handle.param2 && _fibers.at(handle.param1).getState() != Fiber::State::Free;
 }
-
 
 // Private
 

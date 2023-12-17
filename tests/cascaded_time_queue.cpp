@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     Internal::CascadedTimeQueue tq(now, 6, resolution);
 
     now += 5000ms;
-    assert( tq.expiredEvent( now ).isEmpty() );
+    assert( ! tq.executeEvent( now ) );
 
     auto start_time = now;
     for( unsigned i=0; i<num_iterations; ++i ) {
@@ -37,29 +37,33 @@ int main(int argc, char *argv[]) {
         if( events.find( time ) != events.end() )
             continue;
 
-        events.emplace( time, tq.insertEventWithHandle( time, [](){} ) );
+        events.emplace(
+                time,
+                tq.insertEventWithHandle(
+                    time,
+                    [&now, resolution, start_time](TimePoint tp){
+                        auto iter = events.find( tp );
+                        assert( iter != events.end() );
+                        auto corrected_now = now-resolution;
+                        auto handle_time = tp;
+                        assert( handle_time<start_time || corrected_now < handle_time );
+                        events.erase( iter );
+                    } )
+                );
     }
 
     TimePoint nextEvent = tq.nextEvent();
     do {
         now = nextEvent;
 
-        Internal::CascadedTimeQueue::TimerHandle handle;
-        while( ! (handle = tq.expiredEvent(now)).isEmpty() ) {
-            auto iter = events.find( handle.getTime() );
-            assert( iter != events.end() );
-            auto corrected_now = now-resolution;
-            auto handle_time = handle.getTime();
-            assert( handle_time<start_time || corrected_now < handle_time );
-            events.erase( iter );
-            handle.call();
+        while( tq.executeEvent(now) ) {
         }
 
         nextEvent = tq.nextEvent();
     } while( nextEvent != TimePoint::max() );
 
     assert( events.empty() );
-    assert( tq.expiredEvent( now+5000s ).isEmpty() );
+    assert( !tq.executeEvent( now+5000s ) );
 
     std::cout<<"Test passed\n";
 }

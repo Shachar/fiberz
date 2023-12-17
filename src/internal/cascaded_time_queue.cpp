@@ -18,12 +18,6 @@ void CascadedTimeQueue::TimerHandle::release() {
     queue_ = nullptr;
 }
 
-void CascadedTimeQueue::TimerHandle::call() const {
-    assert( !isEmpty() );
-
-    event_->callback();
-}
-
 TimePoint CascadedTimeQueue::TimerHandle::getTime() const {
     assert( !isEmpty() );
 
@@ -53,21 +47,23 @@ TimePoint CascadedTimeQueue::nextEvent() {
         return start_ + resolution_*next_event_tick_;
 }
 
-CascadedTimeQueue::TimerHandle CascadedTimeQueue::expiredEvent( TimePoint now ) {
+bool CascadedTimeQueue::executeEvent( TimePoint now ) {
     advanceTime( now );
 
     ListType &list = currentBucket();
 
     if( !list.empty() ) {
-        TimerHandle ret( list.front() );
+        auto front = list.front();
         list.pop_front();
 
         if( list.empty() )
             next_event_tick_ = NextEventUnknown;
 
-        return ret;
+        front->callback( front->expires );
+
+        return true;
     } else {
-        return TimerHandle();
+        return false;
     }
 }
 

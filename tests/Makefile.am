@@ -1,4 +1,4 @@
-noinst_PROGRAMS=basic killer ex_context cil cascaded_time_queue
+noinst_PROGRAMS=basic killer ex_context cil cascaded_time_queue #timer
 
 LDADD=$(top_builddir)/src/libfiberz.la
 
@@ -10,3 +10,4 @@ killer_SOURCES=killer.cpp
 ex_context_SOURCES=ex_context.cpp
 cil_SOURCES=cil.cpp
 cascaded_time_queue_SOURCES=cascaded_time_queue.cpp
+timer_SOURCES=timer.cpp
