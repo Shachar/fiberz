@@ -104,7 +104,7 @@ public:
 
     void registerTimer( TimePoint expiery, TimerCallback callback );
     [[nodiscard]] TimerHandle registerCancellableTimer( TimePoint expiery, TimerCallback callback ) {
-        return _time_queue.insertEventWithHandle( expiery, callback );
+        return _time_queue.insertEventWithHandle( expiery, std::move(callback) );
     }
     [[nodiscard]] TimerHandle registerRecurringTimer( Duration period, TimerCallback callback ) {
         return _time_queue.insertRecurringEvent( period, std::move(callback) );

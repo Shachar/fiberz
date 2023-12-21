@@ -1,5 +1,7 @@
 #include <fiberz/internal/cascaded_time_queue.h>
 
+#include <fiberz/internal/epr.h>
+
 namespace Fiberz::Internal {
 
 CascadedTimeQueue::TimerHandle::~TimerHandle() {
@@ -245,6 +247,16 @@ CascadedTimeQueue::TimerHandle CascadedTimeQueue::insertEventWithHandle( TimePoi
     insert( event, cascaded_list_.size() );
 
     return TimerHandle( std::move( event ) );
+}
+
+CascadedTimeQueue::TimerHandle CascadedTimeQueue::insertRecurringEvent( Duration period, Callback callback ) {
+    EPR<ListType::NodePtr> eventMaster;
+
+    return insertEventWithHandle(
+            period,
+            [period, this, callback = std::move(callback), event = eventMaster.createSlave()](TimePoint tp) {
+                callback(tp);
+            });
 }
 
 void CascadedTimeQueue::removeEvent( TimerEvent *event ) {

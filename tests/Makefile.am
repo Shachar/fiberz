@@ -1,4 +1,4 @@
-noinst_PROGRAMS=basic killer ex_context cil cascaded_time_queue #timer
+noinst_PROGRAMS=basic killer ex_context cil cascaded_time_queue timer
 
 LDADD=$(top_builddir)/src/libfiberz.la
 

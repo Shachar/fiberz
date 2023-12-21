@@ -1,13 +1,15 @@
 #pragma once
 
-#include <fiberz/time.h>
 #include <fiberz/containers/compact_intrusive_list.h>
+#include <fiberz/internal/callable.h>
+
+#include <fiberz/time.h>
 
 namespace Fiberz::Internal {
 
 class CascadedTimeQueue {
 public:
-    using Callback = std::function<void(TimePoint)>;
+    using Callback = ::Fiberz::Internal::Callable<void, TimePoint>;
 
 private:
     static constexpr size_t NodesPerLevel = 256;
@@ -23,7 +25,7 @@ private:
         mutable size_t ref_count = 0;
         ListType *owner = nullptr;
 
-        explicit TimerEvent( TimePoint expiery, Callback callback ) : expires(expiery), callback(callback) {}
+        explicit TimerEvent( TimePoint expiery, Callback callback ) : expires(expiery), callback(std::move(callback)) {}
 
         friend inline void intrusive_ptr_release(const TimerEvent *ptr) {
             if( --ptr->ref_count == 0 )

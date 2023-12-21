@@ -12,7 +12,8 @@ void testFiber() {
     uint32_t recurring_count = 0, one_time_count = 0;
     base = Fiberz::now();
 
-    auto recurringTimer = Fiberz::reactor().registerRecurringTimer( 3ms, [&recurring_count]() { recurring(recurring_count); } );
+    auto recurringTimer = Fiberz::reactor().registerRecurringTimer(
+            3ms, [&recurring_count](Fiberz::TimePoint) { recurring(recurring_count); } );
 
     Fiberz::reactor().sleep( 10ms );
 
