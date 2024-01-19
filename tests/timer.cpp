@@ -18,6 +18,8 @@ void testFiber() {
     Fiberz::reactor().sleep( 10ms );
 
     assert( recurring_count==3 );
+
+    Fiberz::reactor().stop();
 }
 
 int main() {

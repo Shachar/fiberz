@@ -64,7 +64,9 @@ public:
 
     public:
         explicit TimerHandle() = default;
-        explicit TimerHandle( boost::intrusive_ptr<TimerEvent> event ) : event_( std::move(event) ) {}
+        explicit TimerHandle( boost::intrusive_ptr<TimerEvent> event, CascadedTimeQueue &queue ) :
+            event_( std::move(event) ), queue_(&queue)
+        {}
 
         TimerHandle( const TimerHandle &that ) = delete;
         TimerHandle &operator=( const TimerHandle &that ) = delete;

@@ -5,19 +5,23 @@
 namespace Fiberz::Internal {
 
 CascadedTimeQueue::TimerHandle::~TimerHandle() {
-    if( queue_ )
-        removeEvent();
+    removeEvent();
 }
 
 void CascadedTimeQueue::TimerHandle::removeEvent() {
-    assert( queue_ != nullptr );
-    queue_->removeEvent( *this );
-    queue_ = nullptr;
+    if( queue_ != nullptr ) {
+        queue_->removeEvent( *this );
+        queue_ = nullptr;
+    }
 }
 
 void CascadedTimeQueue::TimerHandle::release() {
     event_ = nullptr;
     queue_ = nullptr;
+}
+
+bool CascadedTimeQueue::TimerHandle::isValid() const {
+    return !isEmpty() && event_->owner != nullptr;
 }
 
 TimePoint CascadedTimeQueue::TimerHandle::getTime() const {
@@ -36,7 +40,8 @@ CascadedTimeQueue::CascadedTimeQueue( TimePoint current_time, size_t numLevels, 
 {}
 
 void CascadedTimeQueue::removeEvent( const TimerHandle &handle ) {
-    removeEvent( handle.event_.get() );
+    if( handle.isValid() )
+        removeEvent( handle.event_.get() );
 }
 
 TimePoint CascadedTimeQueue::nextEvent() {
@@ -57,6 +62,7 @@ bool CascadedTimeQueue::executeEvent( TimePoint now ) {
     if( !list.empty() ) {
         auto front = list.front();
         list.pop_front();
+        front->owner = nullptr;
 
         if( list.empty() )
             next_event_tick_ = NextEventUnknown;
@@ -246,11 +252,33 @@ CascadedTimeQueue::TimerHandle CascadedTimeQueue::insertEventWithHandle( TimePoi
 
     insert( event, cascaded_list_.size() );
 
-    return TimerHandle( std::move( event ) );
+    return TimerHandle( std::move( event ), *this );
 }
 
 CascadedTimeQueue::TimerHandle CascadedTimeQueue::insertRecurringEvent( Duration period, Callback callback ) {
     EPR<ListType::NodePtr> eventMaster;
+    ListType::NodePtr event(
+            new TimerEvent(
+                period,
+                [this, period, callback = std::move(callback), event = eventMaster.createSlave()](TimePoint tp) {
+                    // Reinsert the event before calling the callback so it can cancel using the handle if it wants
+                    (*event)->expires += period;
+                    insert( *event, cascaded_list_.size() );
+
+                    callback(tp);
+                }
+            )
+        );
+
+    *eventMaster.slave() = event;
+    insert( event, cascaded_list_.size() );
+
+    return TimerHandle( std::move( event ), *this );
+
+
+
+
+
 
     return insertEventWithHandle(
             period,

@@ -35,6 +35,7 @@ class Reactor {
     UniqueMmap                                  _stacks;
     Internal::Fiber::Idx                        _current_fiber = Internal::Fiber::Idx(0);
     Internal::CascadedTimeQueue                 _time_queue;
+    bool                                        _exit_requested = false;
 
 public:
     explicit Reactor( StartupParams startup_params );
@@ -48,6 +49,7 @@ public:
     static void init(StartupParams startupParams = StartupParams{});
 
     int start();
+    void stop();
 
     template<typename F, typename... Arguments>
             requires std::invocable<F, Arguments...>

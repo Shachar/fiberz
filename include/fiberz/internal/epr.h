@@ -33,6 +33,7 @@ class EPR {
             if( master_ != nullptr ) {
                 assert( master_->slave_ == &that );
                 master_->slave_ = this;
+                that.master_ = nullptr;
             }
         }
         Slave &operator=(Slave &&that) {
@@ -45,6 +46,7 @@ class EPR {
                 if( master_ != nullptr ) {
                     assert( master_->slave_ == &that );
                     master_->slave_ = this;
+                    that.master_ = nullptr;
                 }
             }
 
@@ -62,6 +64,19 @@ class EPR {
             }
 
             master_ = nullptr;
+        }
+
+        T &operator*() {
+            return element_;
+        }
+        T &operator->() {
+            return element_;
+        }
+        const T &operator*() const {
+            return element_;
+        }
+        const T &operator->() const {
+            return element_;
         }
     };
 
@@ -111,6 +126,12 @@ public:
         slave_ = &slave;
 
         return slave;
+    }
+
+    Slave &slave() {
+        assert( slave_ != nullptr );
+
+        return *slave_;
     }
 };
 

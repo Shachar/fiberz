@@ -6,6 +6,8 @@
 
 #include "utils.h"
 
+#include <thread>
+
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -55,7 +57,17 @@ void Reactor::init(StartupParams params) {
 
 int Reactor::start() {
     // Main fiber main loop
-    while( ! _ready_list.empty() ) {
+    _fibers[0].setState( Fiber::State::Ready );     // Main fiber is always ready
+    switchToNext();
+
+    while( ! _exit_requested ) {
+        TimePoint next_event = _time_queue.nextEvent();
+        std::this_thread::sleep_until( next_event );
+
+        auto current_time = now();
+        while( _time_queue.executeEvent(current_time) )
+            ;
+
         _fibers[0].setState( Fiber::State::Ready );     // Main fiber is always ready
         switchToNext();
     }
@@ -65,12 +77,18 @@ int Reactor::start() {
     return 0;
 }
 
+void Reactor::stop() {
+    _exit_requested = true;
+    yield();
+}
+
 void Reactor::sleep(TimePoint wakeup) {
     auto thisFiber = currentFiberHandle();
 
     // By using the handle we guarantee that if the fiber is cancelled, the timer gets cancelled as well.
-    auto timerHandle = registerCancellableTimer( wakeup, [this, thisFiber](TimePoint) { schedule(thisFiber); } );
-    yield();
+    auto timerHandle = registerCancellableTimer( wakeup, [this, thisFiber](TimePoint) {
+            schedule(thisFiber); } );
+    sleep();
 }
 
 void Reactor::killFiber( FiberHandle handle ) {
